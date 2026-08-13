@@ -1,0 +1,321 @@
+-- =================================================================
+-- ============= Cnybdv Hub (Fix Auto Attack Edition) ==============
+-- =================================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local GuiService = game:GetService("GuiService")
+local ScriptContext = game:GetService("ScriptContext")
+local LocalPlayer = Players.LocalPlayer
+
+-- -----------------------------------------------------------------
+-- 🛡️ [ ระบบ Anti-Ban & Anti-Kick ]
+-- -----------------------------------------------------------------
+task.spawn(function()
+    pcall(function()
+        ScriptContext.Error:Connect(function() return nil end)
+    end)
+
+    if getrawmetatable and setreadonly then
+        local rawmeta = getrawmetatable(game)
+        local oldNamecall = rawmeta.__namecall
+        setreadonly(rawmeta, false)
+
+        rawmeta.__namecall = newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            local strMethod = tostring(method)
+
+            if (strMethod == "Kick" or strMethod == "kick") and (self == LocalPlayer or self == Players) then
+                return nil
+            end
+
+            if strMethod == "FireServer" or strMethod == "InvokeServer" then
+                local args = {...}
+                if args[1] and type(args[1]) == "string" then
+                    local argStr = string.lower(args[1])
+                    if argStr:find("cheat") or argStr:find("exploit") or argStr:find("ban") or argStr:find("log") then
+                        return nil
+                    end
+                end
+            end
+
+            return oldNamecall(self, ...)
+        end)
+        setreadonly(rawmeta, true)
+    end
+end)
+
+-- -----------------------------------------------------------------
+-- 🎨 [ UI เมนูหลัก Cnybdv Hub ]
+-- -----------------------------------------------------------------
+
+if game:GetService("CoreGui"):FindFirstChild("CnybdvHubGui") then
+    game:GetService("CoreGui").CnybdvHubGui:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CnybdvHubGui"
+ScreenGui.Parent = game:GetService("CoreGui")
+
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+ToggleBtn.Position = UDim2.new(0.05, 0, 0.15, 0)
+ToggleBtn.Size = UDim2.new(0, 80, 0, 32)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.Text = "cnybdv"
+ToggleBtn.TextColor3 = Color3.fromRGB(0, 150, 255)
+ToggleBtn.TextSize = 14
+ToggleBtn.Active = true
+ToggleBtn.Draggable = true
+
+local ToggleUICorner = Instance.new("UICorner")
+ToggleUICorner.CornerRadius = UDim.new(0, 8)
+ToggleUICorner.Parent = ToggleBtn
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -160)
+MainFrame.Size = UDim2.new(0, 450, 0, 320)
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0, 15, 0, 10)
+Title.Size = UDim2.new(0, 200, 0, 25)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "cnybdv Hub (Fix Auto Attack)"
+Title.TextColor3 = Color3.fromRGB(0, 150, 255)
+Title.TextSize = 15
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Parent = MainFrame
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.Position = UDim2.new(1, -35, 0, 10)
+CloseBtn.Size = UDim2.new(0, 25, 0, 25)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Text = "✕"
+CloseBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+CloseBtn.TextSize = 16
+
+CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
+ToggleBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
+
+local SideBar = Instance.new("Frame")
+SideBar.Parent = MainFrame
+SideBar.BackgroundTransparency = 1
+SideBar.Position = UDim2.new(0, 10, 0, 45)
+SideBar.Size = UDim2.new(0, 115, 1, -55)
+
+local PageContainer = Instance.new("Frame")
+PageContainer.Parent = MainFrame
+PageContainer.BackgroundTransparency = 1
+PageContainer.Position = UDim2.new(0, 132, 0, 45)
+PageContainer.Size = UDim2.new(1, -142, 1, -55)
+
+local tabBtn = Instance.new("TextButton")
+tabBtn.Parent = SideBar
+tabBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+tabBtn.Size = UDim2.new(1, 0, 0, 36)
+tabBtn.Font = Enum.Font.GothamBold
+tabBtn.Text = "⚔️  ฟังค์ชันหลัก"
+tabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+tabBtn.TextSize = 11
+
+local tabCorner = Instance.new("UICorner")
+tabCorner.CornerRadius = UDim.new(0, 8)
+tabCorner.Parent = tabBtn
+
+local page = Instance.new("ScrollingFrame")
+page.Parent = PageContainer
+page.BackgroundTransparency = 1
+page.Size = UDim2.new(1, 0, 1, 0)
+page.ScrollBarThickness = 3
+
+local pageLayout = Instance.new("UIListLayout")
+pageLayout.Parent = page
+pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+pageLayout.Padding = UDim.new(0, 8)
+
+local function createToggleRow(parentPage, text, callback)
+    local row = Instance.new("Frame")
+    row.Parent = parentPage
+    row.BackgroundColor3 = Color3.fromRGB(28, 28, 30)
+    row.Size = UDim2.new(1, -5, 0, 40)
+
+    local rowCorner = Instance.new("UICorner")
+    rowCorner.CornerRadius = UDim.new(0, 8)
+    rowCorner.Parent = row
+
+    local label = Instance.new("TextLabel")
+    label.Parent = row
+    label.BackgroundTransparency = 1
+    label.Position = UDim2.new(0, 10, 0, 0)
+    label.Size = UDim2.new(0.68, 0, 1, 0)
+    label.Font = Enum.Font.Gotham
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local toggleBG = Instance.new("TextButton")
+    toggleBG.Parent = row
+    toggleBG.BackgroundColor3 = Color3.fromRGB(45, 45, 48)
+    toggleBG.Position = UDim2.new(1, -50, 0.5, -11)
+    toggleBG.Size = UDim2.new(0, 40, 0, 22)
+    toggleBG.Text = ""
+
+    local bgCorner = Instance.new("UICorner")
+    bgCorner.CornerRadius = UDim.new(1, 0)
+    bgCorner.Parent = toggleBG
+
+    local circle = Instance.new("Frame")
+    circle.Parent = toggleBG
+    circle.BackgroundColor3 = Color3.fromRGB(180, 180, 180)
+    circle.Position = UDim2.new(0, 2, 0.5, -8)
+    circle.Size = UDim2.new(0, 16, 0, 16)
+
+    local circleCorner = Instance.new("UICorner")
+    circleCorner.CornerRadius = UDim.new(1, 0)
+    circleCorner.Parent = circle
+
+    local state = false
+    toggleBG.MouseButton1Click:Connect(function()
+        state = not state
+        if state then
+            toggleBG.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+            circle.Position = UDim2.new(1, -18, 0.5, -8)
+            circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            toggleBG.BackgroundColor3 = Color3.fromRGB(45, 45, 48)
+            circle.Position = UDim2.new(0, 2, 0.5, -8)
+            circle.BackgroundColor3 = Color3.fromRGB(180, 180, 180)
+        end
+        callback(state)
+    end)
+end
+
+-- -----------------------------------------------------------------
+-- ⚙️ [ การทำงานของระบบ ]
+-- -----------------------------------------------------------------
+
+local isTpBehindOn = false
+local autoAttack = false
+local autoRespawn = false
+
+createToggleRow(page, "👻 สิงหลังศัตรูที่ใกล้ที่สุด", function(state)
+    isTpBehindOn = state
+end)
+
+createToggleRow(page, "🥊 กดตีอัตโนมัติ (Auto Attack)", function(state)
+    autoAttack = state
+end)
+
+createToggleRow(page, "💀 เกิดใหม่อัตโนมัติ (Auto Respawn/Play)", function(state)
+    autoRespawn = state
+end)
+
+-- 1. ฟังก์ชันหาศัตรูใกล้ที่สุด
+local function getClosestEnemy()
+    local closestPlr = nil
+    local shortestDistance = math.huge
+    local myChar = LocalPlayer.Character
+    
+    if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+        local myPos = myChar.HumanoidRootPart.Position
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    local dist = (plr.Character.HumanoidRootPart.Position - myPos).Magnitude
+                    if dist < shortestDistance then
+                        shortestDistance = dist
+                        closestPlr = plr
+                    end
+                end
+            end
+        end
+    end
+    return closestPlr
+end
+
+-- 2. ระบบวาร์ปสิงหลัง
+RunService.RenderStepped:Connect(function()
+    if isTpBehindOn then
+        local myChar = LocalPlayer.Character
+        if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+            local enemy = getClosestEnemy()
+            if enemy and enemy.Character and enemy.Character:FindFirstChild("HumanoidRootPart") then
+                local enemyHrp = enemy.Character.HumanoidRootPart
+                myChar.HumanoidRootPart.CFrame = enemyHrp.CFrame * CFrame.new(0, 0, 2.5)
+            end
+        end
+    end
+end)
+
+-- 3. ระบบ Auto Attack แบบแก้ไขใหม่ (ใช้อัลกอริทึม VirtualInputManager กดคลิกจริงใส่จอ)
+task.spawn(function()
+    while true do
+        if autoAttack then
+            pcall(function()
+                local char = LocalPlayer.Character
+                if char then
+                    -- วิธีที่ 1: ตรวจหา Tool ในตัวแล้วสั่งกดใช้งาน
+                    local tool = char:FindFirstChildOfClass("Tool")
+                    if tool then
+                        tool:Activate()
+                    end
+                    
+                    -- วิธีที่ 2: จำลองการกดคลิกซ้ายระดับ Input System (ใช้ได้กับทุกเกมอนิเมะ)
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                    task.wait(0.02)
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+                end
+            end)
+        end
+        task.wait(0.1)
+    end
+end)
+
+-- 4. ระบบ Auto Respawn
+task.spawn(function()
+    while true do
+        if autoRespawn then
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            
+            if not char or (hum and hum.Health <= 0) then
+                task.wait(0.6)
+                pcall(function()
+                    LocalPlayer:LoadCharacter()
+                end)
+                pcall(function()
+                    local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+                    if playerGui then
+                        for _, gui in pairs(playerGui:GetDescendants()) do
+                            if gui:IsA("TextButton") or gui:IsA("ImageButton") then
+                                local btnText = string.lower(gui.Name .. " " .. (gui:IsA("TextButton") and gui.Text or ""))
+                                if btnText:find("respawn") or btnText:find("play") or btnText:find("retry") or btnText:find("spawn") then
+                                    GuiService.SelectedObject = gui
+                                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+        task.wait(1)
+    end
+end)
